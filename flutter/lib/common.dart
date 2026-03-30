@@ -2241,6 +2241,8 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
   String? password;
   String? switchUuid;
   bool? forceRelay;
+  /// 0-based remote display index (from 1-based CLI / URL, same numbering as remote toolbar labels).
+  int? remoteDisplayIndex;
   for (int i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--connect':
@@ -2291,6 +2293,15 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
       case '--relay':
         forceRelay = true;
         break;
+      case '--display':
+        if (i + 1 < args.length) {
+          final n = int.tryParse(args[i + 1]);
+          if (n != null && n >= 1) {
+            remoteDisplayIndex = n - 1;
+          }
+          i++;
+        }
+        break;
       default:
         break;
     }
@@ -2302,7 +2313,8 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
           rustDeskWinManager.newRemoteDesktop(id!,
               password: password,
               switchUuid: switchUuid,
-              forceRelay: forceRelay);
+              forceRelay: forceRelay,
+              initialDisplay: remoteDisplayIndex);
         });
         break;
       case UriLinkType.fileTransfer:
@@ -2446,6 +2458,8 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
     String? switch_uuid = param["switch_uuid"];
     if (switch_uuid != null) args.addAll(['--switch_uuid', switch_uuid]);
     if (param["relay"] != null) args.add("--relay");
+    String? displayParam = param["display"];
+    if (displayParam != null) args.addAll(['--display', displayParam]);
     return args;
   }
 
