@@ -230,6 +230,7 @@ class RustDeskMultiWindowManager {
     bool? isRDP,
     bool? isSharedPassword,
     String? connToken,
+    int? initialDisplay,
   }) async {
     var params = {
       "type": type.index,
@@ -249,17 +250,25 @@ class RustDeskMultiWindowManager {
     if (connToken != null) {
       params['connToken'] = connToken;
     }
+    if (initialDisplay != null) {
+      params['display'] = initialDisplay;
+      params['displays'] = [initialDisplay];
+    }
     final msg = jsonEncode(params);
 
     // separate window for file transfer is not supported
     bool openInTabs = type != WindowType.RemoteDesktop ||
         mainGetLocalBoolOptionSync(kOptionOpenNewConnInTabs);
 
-    if (windows.length > 1 || !openInTabs) {
-      for (final windowId in windows) {
-        if (await DesktopMultiWindow.invokeMethod(
-            windowId, kWindowEventActiveSession, remoteId)) {
-          return MultiWindowCallResult(windowId, null);
+    // Skip reusing an existing tab when opening a specific remote monitor (e.g. CLI --display),
+    // so a second launch opens a new session instead of focusing the old one.
+    if (initialDisplay == null) {
+      if (windows.length > 1 || !openInTabs) {
+        for (final windowId in windows) {
+          if (await DesktopMultiWindow.invokeMethod(
+              windowId, kWindowEventActiveSession, remoteId)) {
+            return MultiWindowCallResult(windowId, null);
+          }
         }
       }
     }
@@ -273,6 +282,7 @@ class RustDeskMultiWindowManager {
     bool? isSharedPassword,
     String? switchUuid,
     bool? forceRelay,
+    int? initialDisplay,
   }) async {
     return await newSession(
       WindowType.RemoteDesktop,
@@ -283,6 +293,7 @@ class RustDeskMultiWindowManager {
       forceRelay: forceRelay,
       switchUuid: switchUuid,
       isSharedPassword: isSharedPassword,
+      initialDisplay: initialDisplay,
     );
   }
 

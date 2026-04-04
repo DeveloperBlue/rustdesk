@@ -1367,6 +1367,20 @@ class FfiModel with ChangeNotifier {
       }
       _pi.displays.value = newDisplays;
       _pi.displaysCount.value = _pi.displays.length;
+      // Safe fallback if current_display is out of range (e.g. CLI --display too high for this peer).
+      if (_pi.displays.isNotEmpty && _pi.currentDisplay >= _pi.displays.length) {
+        _pi.currentDisplay = 0;
+        try {
+          CurrentDisplayState.find(peerId).value = _pi.currentDisplay;
+        } catch (e) {
+          //
+        }
+        bind.sessionSwitchDisplay(
+          isDesktop: isDesktop,
+          sessionId: sessionId,
+          value: Int32List.fromList([0]),
+        );
+      }
       if (_pi.currentDisplay < _pi.displays.length) {
         // now replaced to _updateCurDisplay
         updateCurDisplay(sessionId);
@@ -3770,13 +3784,12 @@ class FFI {
     // Though the stream is returned immediately, the stream may not be ready.
     // Any operations that depend on the stream should be carefully handled.
     late final Stream<EventToUI> stream;
-    if (isNewPeer || display == null || displays == null) {
-      stream = bind.sessionStart(sessionId: sessionId, id: id);
-    } else {
-      // We have to put displays in `sessionStart()` to make sure the stream is ready
-      // and then the displays' capturing requests can be sent.
+    if (displays != null && displays.isNotEmpty && display != null) {
+      // Includes new peers opened with CLI `--display`: request capture for that monitor from the start.
       stream = bind.sessionStartWithDisplays(
           sessionId: sessionId, id: id, displays: Int32List.fromList(displays));
+    } else {
+      stream = bind.sessionStart(sessionId: sessionId, id: id);
     }
 
     if (isWeb) {
